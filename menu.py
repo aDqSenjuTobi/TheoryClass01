@@ -3,6 +3,7 @@ import heapq
 import random
 from collections import Counter
 import requests
+from shannonfano import ShannonFano
 from api import obtener_personajes_marvel
 
 class Huffman:
@@ -62,55 +63,6 @@ class Huffman:
                 nodo_actual = arbol_huffman
         return mensaje_decodificado
 
-class ShannonFano:
-    @staticmethod
-    def shannon_fano_encoding(data):
-        freq = Counter(data)
-        freq = {k: v / len(data) for k, v in freq.items()}
-
-        nodes = list(freq.items())
-        nodes.sort(key=lambda x: x[1], reverse=True)
-
-        def divide(nodes):
-            if len(nodes) <= 1:
-                return nodes
-            total_prob = sum(node[1] for node in nodes)
-            half_prob = 0
-            index = 0
-
-            for i, node in enumerate(nodes):
-                if half_prob + node[1] < total_prob / 2:
-                    half_prob += node[1]
-                    index = i
-                else:
-                    break
-
-            left = divide(nodes[:index + 1])
-            right = divide(nodes[index + 1:])
-
-            left = [(char, prob, code + '0') for char, prob, code in left]
-            right = [(char, prob, code + '1') for char, prob, code in right]
-
-            return left + right
-
-        nodes = [(char, prob, '') for char, prob in nodes]  
-        divide(nodes)
-        encoding = {char: code for char, prob, code in nodes}
-        return ''.join([encoding[char] for char in data])
-
-
-    @staticmethod
-    def shannon_fano_decoding(encoded_string, encoding):
-        reverse_encoding = {v: k for k, v in encoding.items()}
-        start = 0
-        result = ''
-        for i in range(1, len(encoded_string) + 1):
-            substr = encoded_string[start:i]
-            if substr in reverse_encoding:
-                result += reverse_encoding[substr]
-                start = i
-        return result
-
 class Reversa:
     @staticmethod
     def codificar_mensaje(mensaje):
@@ -169,9 +121,9 @@ if opcion == 1:
     mensaje_decodificado = Huffman.decodificar_mensaje(mensaje_codificado, arbol_huffman)
     metodo = "Huffman"
 elif opcion == 2:
-    mensaje_codificado = ShannonFano.shannon_fano_encoding(mensaje_original)
-    encoding = {k: v for k, v in Counter(mensaje_original).items()}
-    mensaje_decodificado = ShannonFano.shannon_fano_decoding(mensaje_codificado, encoding)
+    sf = ShannonFano()
+    mensaje_codificado = sf.encode(mensaje_original)
+    mensaje_decodificado = sf.decode(mensaje_codificado)
     metodo = "Shannon-Fano"
 elif opcion == 3:
     mensaje_codificado = Reversa.codificar_mensaje(mensaje_original)
