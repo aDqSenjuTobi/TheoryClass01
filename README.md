@@ -7,9 +7,8 @@ Para esta practica que llevare acabo en el cual debemos implementar
 - Canal
 - Receptor
 - Destino de información
-Yo voy a hacer la simulacion transferencias bancarias
-- Funte de inmformamción, será una API sobre registros de valores de tansferencias la API se llama API payments
-- Transmisor: Una banca digital
-- Ruido: Los datos van a ser codificados en hexadecial para su seguridad al transmitir
-- Canal: Wi-Fi
-- Receptor: El banco destino decodifoca los valores recibidos.
+Se elaboro un esquema de comunicacion que manda a llamar a una API de marvel la cual devuelve los personajes en modo de tupla y se pasa a binario de 8 bits para las proximas codificaciones.
+
+##Ejecucion:
+- Importo funciones de los programas shannon.py, huffman.py y api.py asi que en necesarios tenerlos para correrlo.
+- Se debe ejecutar el programa menu.py para poder visualizar las codificaciones a elegir.
