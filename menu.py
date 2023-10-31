@@ -1,5 +1,6 @@
 import base64
 import heapq
+import random
 from collections import Counter
 import requests
 from api import obtener_personajes_marvel
@@ -67,27 +68,36 @@ class ShannonFano:
         freq = Counter(data)
         freq = {k: v / len(data) for k, v in freq.items()}
 
-        nodes = sorted(list(freq.items()), key=lambda x: x[1], reverse=True)
-        nodes = [[node] for node in nodes]
+        nodes = list(freq.items())
+        nodes.sort(key=lambda x: x[1], reverse=True)
 
-        while len(nodes) > 1:
-            e1 = sum(nodes[0][0][1] for node in nodes[0])
-            e2 = sum(nodes[0][0][1] for node in nodes[1])
+        def divide(nodes):
+            if len(nodes) <= 1:
+                return nodes
+            total_prob = sum(node[1] for node in nodes)
+            half_prob = 0
+            index = 0
 
-            if e1 >= e2:
-                group = nodes.pop(0)
-                for k in group:
-                    k[0] = '0' + k[0]
-                nodes[0].extend(group)
-            else:
-                group = nodes.pop(1)
-                for k in group:
-                    k[0] = '1' + k[0]
-                nodes[0].extend(group)
-            nodes[0] = sorted(nodes[0], key=lambda x: x[1], reverse=True)
+            for i, node in enumerate(nodes):
+                if half_prob + node[1] < total_prob / 2:
+                    half_prob += node[1]
+                    index = i
+                else:
+                    break
 
-        encoding = {v[0]: k for k, v in nodes[0]}
-        return ''.join([encoding[i] for i in data])
+            left = divide(nodes[:index + 1])
+            right = divide(nodes[index + 1:])
+
+            left = [(char, prob, code + '0') for char, prob, code in left]
+            right = [(char, prob, code + '1') for char, prob, code in right]
+
+            return left + right
+
+        nodes = [(char, prob, '') for char, prob in nodes]  
+        divide(nodes)
+        encoding = {char: code for char, prob, code in nodes}
+        return ''.join([encoding[char] for char in data])
+
 
     @staticmethod
     def shannon_fano_decoding(encoded_string, encoding):
@@ -124,10 +134,30 @@ class Base64:
         mensaje_bytes = base64.b64decode(base64_bytes)
         mensaje = mensaje_bytes.decode('ascii')
         return mensaje
+    
+class CanalComunicacion:
+    NUM_CANALES = 4
+    PROBABILIDAD_RUIDO = 0.9  # Probabilidad de ruido
+    @staticmethod
+    def detectar_ruido():
+        return random.random() < CanalComunicacion.PROBABILIDAD_RUIDO
+
+    @staticmethod
+    def enviar_mensaje(mensaje_codificado):
+        canal_actual = 1
+        while canal_actual <= CanalComunicacion.NUM_CANALES:
+            if CanalComunicacion.detectar_ruido():
+                print(f"Ruido detectado en el canal {canal_actual}. Cambiando al siguiente canal...")
+                canal_actual += 1
+            else:
+                print(f"Mensaje enviado correctamente a través del canal {canal_actual}.")
+                return True
+        print("No se pudo enviar el mensaje después de intentar en todos los canales.")
+        return False
 
 print("Selecciona un tipo de codificación:\n1 - Huffman\n2 - Shannon-Fano\n3 - Inversa\n4 - Base64")
 opcion = int(input("Opción: "))
-personajes = obtener_personajes_marvel()  # Aquí obtienes los personajes desde la API
+personajes = obtener_personajes_marvel() 
 
 mensaje_original = str(personajes) 
 
@@ -154,9 +184,10 @@ elif opcion == 4:
 else:
     print("Opción no válida")
 
-print("\nMensaje Original:")
-print(mensaje_original)
-print(f"\nMensaje Codificado ({metodo}):")
-print(mensaje_codificado)
-print("\nMensaje Decodificado:")
-print(mensaje_decodificado)
+if CanalComunicacion.enviar_mensaje(mensaje_codificado):  
+    print("\nMensaje Original:")
+    print(mensaje_original)
+    print(f"\nMensaje Codificado ({metodo}):")
+    print(mensaje_codificado)
+    print("\nMensaje Decodificado:")
+    print(mensaje_decodificado)
