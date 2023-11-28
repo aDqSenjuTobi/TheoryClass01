@@ -10,8 +10,6 @@ personajes_binarios = {}
 for personaje in nombres_personajes:
     personajes_binarios[personaje] = string_a_binario(personaje)
 
-for personaje, binario in personajes_binarios.items():
-    print(f"{personaje}: {binario}\n")
 
 class ShannonFano:
     def __init__(self): 

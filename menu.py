@@ -1,6 +1,7 @@
 import base64
 import heapq
 import random
+import hashlib
 from collections import Counter
 import requests
 from shannonfano import ShannonFano
@@ -89,15 +90,22 @@ class Base64:
     
 class CanalComunicacion:
     NUM_CANALES = 4
-    PROBABILIDAD_RUIDO = 0.9  # Probabilidad de ruido
+    PROBABILIDAD_RUIDO = 0.1  # Probabilidad de ruido
+    CLAVES_CANALES = ["clave1", "clave2", "clave3", "clave4"]  # Claves para cada canal
+
     @staticmethod
     def detectar_ruido():
         return random.random() < CanalComunicacion.PROBABILIDAD_RUIDO
 
     @staticmethod
-    def enviar_mensaje(mensaje_codificado):
+    def enviar_mensaje(mensaje_codificado, clave_mensaje):
         canal_actual = 1
         while canal_actual <= CanalComunicacion.NUM_CANALES:
+            if CanalComunicacion.CLAVES_CANALES[canal_actual - 1] != clave_mensaje:
+                print(f"Clave incorrecta para el canal {canal_actual}. Intentando el siguiente canal...")
+                canal_actual += 1
+                continue
+
             if CanalComunicacion.detectar_ruido():
                 print(f"Ruido detectado en el canal {canal_actual}. Cambiando al siguiente canal...")
                 canal_actual += 1
@@ -106,12 +114,26 @@ class CanalComunicacion:
                 return True
         print("No se pudo enviar el mensaje después de intentar en todos los canales.")
         return False
+    
+def generar_hash(mensaje, clave_secreta):
+    mensaje_clave = mensaje + clave_secreta
+    return hashlib.sha256(mensaje_clave.encode()).hexdigest()
+
+def verificar_hash(mensaje, hash_recibido, clave_secreta):
+    hash_generado = generar_hash(mensaje, clave_secreta)
+    return hash_generado == hash_recibido
+
+CLAVE_SECRETA = "TuClaveSecreta"
+
+personajes = obtener_personajes_marvel() 
+mensaje_original = str(personajes) 
+
+
+hash_mensaje_original = generar_hash(mensaje_original, CLAVE_SECRETA)
+
 
 print("Selecciona un tipo de codificación:\n1 - Huffman\n2 - Shannon-Fano\n3 - Inversa\n4 - Base64")
 opcion = int(input("Opción: "))
-personajes = obtener_personajes_marvel() 
-
-mensaje_original = str(personajes) 
 
 if opcion == 1:
     arbol_huffman = Huffman.construir_arbol_huffman(mensaje_original)
@@ -136,10 +158,17 @@ elif opcion == 4:
 else:
     print("Opción no válida")
 
-if CanalComunicacion.enviar_mensaje(mensaje_codificado):  
+hash_mensaje_original = generar_hash(mensaje_original, CLAVE_SECRETA)
+print(hash_mensaje_original)
+
+clave_para_enviar = "clave3" 
+if CanalComunicacion.enviar_mensaje(mensaje_codificado, clave_para_enviar):  
     print("\nMensaje Original:")
     print(mensaje_original)
     print(f"\nMensaje Codificado ({metodo}):")
     print(mensaje_codificado)
     print("\nMensaje Decodificado:")
     print(mensaje_decodificado)
+else:
+    print("No se pudo enviar el mensaje. Verifica la clave del canal.")
+    
