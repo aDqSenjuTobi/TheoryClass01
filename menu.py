@@ -161,7 +161,7 @@ else:
 hash_mensaje_original = generar_hash(mensaje_original, CLAVE_SECRETA)
 print(hash_mensaje_original)
 
-clave_para_enviar = "clave3" 
+clave_para_enviar = str(input()) 
 if CanalComunicacion.enviar_mensaje(mensaje_codificado, clave_para_enviar):  
     print("\nMensaje Original:")
     print(mensaje_original)
