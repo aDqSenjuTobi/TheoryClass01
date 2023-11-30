@@ -2,8 +2,8 @@ import base64
 import heapq
 import random
 import hashlib
+import os
 from collections import Counter
-import requests
 from shannonfano import ShannonFano
 from api import obtener_personajes_marvel
 
@@ -17,6 +17,14 @@ class Huffman:
 
         def __lt__(self, otro):
             return self.frecuencia < otro.frecuencia
+
+    @staticmethod
+    def generar_hash_mensaje_codificado(mensaje_codificado, clave_secreta):
+        return hashlib.sha256((mensaje_codificado + clave_secreta).encode()).hexdigest()
+
+    @staticmethod
+    def comparar_hash_con_simbolos(hash_mensaje, simbolos_binarios):
+        return all(bit in simbolos_binarios for bit in hash_mensaje)
 
     @classmethod
     def construir_arbol_huffman(cls, datos):
@@ -87,25 +95,19 @@ class Base64:
         mensaje_bytes = base64.b64decode(base64_bytes)
         mensaje = mensaje_bytes.decode('ascii')
         return mensaje
-    
+
 class CanalComunicacion:
     NUM_CANALES = 4
     PROBABILIDAD_RUIDO = 0.1  # Probabilidad de ruido
-    CLAVES_CANALES = ["clave1", "clave2", "clave3", "clave4"]  # Claves para cada canal
 
     @staticmethod
     def detectar_ruido():
         return random.random() < CanalComunicacion.PROBABILIDAD_RUIDO
 
     @staticmethod
-    def enviar_mensaje(mensaje_codificado, clave_mensaje):
+    def enviar_mensaje(mensaje_codificado):
         canal_actual = 1
         while canal_actual <= CanalComunicacion.NUM_CANALES:
-            if CanalComunicacion.CLAVES_CANALES[canal_actual - 1] != clave_mensaje:
-                print(f"Clave incorrecta para el canal {canal_actual}. Intentando el siguiente canal...")
-                canal_actual += 1
-                continue
-
             if CanalComunicacion.detectar_ruido():
                 print(f"Ruido detectado en el canal {canal_actual}. Cambiando al siguiente canal...")
                 canal_actual += 1
@@ -114,7 +116,73 @@ class CanalComunicacion:
                 return True
         print("No se pudo enviar el mensaje después de intentar en todos los canales.")
         return False
+
+class Transmisor:
+    def __init__(self, metodo, mensaje_original):
+        self.metodo = metodo
+        self.mensaje_original = mensaje_original
+        self.mensaje_codificado = None
+
+    def codificar_mensaje(self):
+        if self.metodo == "Huffman":
+            arbol_huffman = Huffman.construir_arbol_huffman(self.mensaje_original)
+            codificacion = {}
+            Huffman.generar_codificacion_huffman(arbol_huffman, codificacion=codificacion)
+            self.mensaje_codificado = Huffman.codificar_mensaje(self.mensaje_original, codificacion)
+
+        elif self.metodo == "Shannon-Fano":
+            sf = ShannonFano()
+            self.mensaje_codificado = sf.encode(self.mensaje_original)
+
+        elif self.metodo == "Inversa":
+            self.mensaje_codificado = Reversa.codificar_mensaje(self.mensaje_original)
+
+        elif self.metodo == "Base64":
+            self.mensaje_codificado = Base64.codificar_mensaje(self.mensaje_original)
+
+    def enviar_mensaje(self):
+            if self.mensaje_codificado is None:
+                print("Mensaje no codificado. No se puede enviar.")
+                return False
+            return CanalComunicacion.enviar_mensaje(self.mensaje_codificado)
     
+    def generar_firma(self):
+            if self.mensaje_codificado:
+                hash_mensaje = hashlib.sha256(self.mensaje_codificado.encode()).hexdigest()
+                print(f"Hash del mensaje codificado en Transmisor: {hash_mensaje}")
+                return hash_mensaje
+            else:
+                print("Mensaje no codificado. No se puede generar firma.")
+                return None
+
+class Receptor:
+    def __init__(self, metodo, mensaje_codificado):
+        self.metodo = metodo
+        self.mensaje_codificado = mensaje_codificado
+        self.firmas = {} 
+
+    def verificar_firma(self, firma):
+        hash_mensaje = hashlib.sha256(self.mensaje_codificado.encode()).hexdigest()
+        print(f"Hash del mensaje codificado en Receptor: {hash_mensaje}")
+        es_valida = firma == hash_mensaje
+        self.firmas[hash_mensaje] = firma
+        return es_valida
+
+    def decodificar_mensaje(self):
+        if self.metodo == "Huffman":
+            arbol_huffman = Huffman.construir_arbol_huffman(self.mensaje_codificado)
+            return Huffman.decodificar_mensaje(self.mensaje_codificado, arbol_huffman)
+
+        elif self.metodo == "Shannon-Fano":
+            sf = ShannonFano()
+            return sf.decode(self.mensaje_codificado)
+
+        elif self.metodo == "Inversa":
+            return Reversa.decodificar_mensaje(self.mensaje_codificado)
+
+        elif self.metodo == "Base64":
+            return Base64.decodificar_mensaje(self.mensaje_codificado)
+
 def generar_hash(mensaje, clave_secreta):
     mensaje_clave = mensaje + clave_secreta
     return hashlib.sha256(mensaje_clave.encode()).hexdigest()
@@ -123,52 +191,45 @@ def verificar_hash(mensaje, hash_recibido, clave_secreta):
     hash_generado = generar_hash(mensaje, clave_secreta)
     return hash_generado == hash_recibido
 
-CLAVE_SECRETA = "TuClaveSecreta"
 
-personajes = obtener_personajes_marvel() 
-mensaje_original = str(personajes) 
-
-
-hash_mensaje_original = generar_hash(mensaje_original, CLAVE_SECRETA)
+# Función principal
+def main():
+    personajes = obtener_personajes_marvel()
+    mensaje_original = str(personajes)
 
 
-print("Selecciona un tipo de codificación:\n1 - Huffman\n2 - Shannon-Fano\n3 - Inversa\n4 - Base64")
-opcion = int(input("Opción: "))
+    print("Selecciona un tipo de codificación:\n1 - Huffman\n2 - Shannon-Fano\n3 - Inversa\n4 - Base64")
+    opcion = int(input("Opción: "))
 
-if opcion == 1:
-    arbol_huffman = Huffman.construir_arbol_huffman(mensaje_original)
-    codificacion = {}
-    Huffman.generar_codificacion_huffman(arbol_huffman, codificacion=codificacion)
-    mensaje_codificado = Huffman.codificar_mensaje(mensaje_original, codificacion)
-    mensaje_decodificado = Huffman.decodificar_mensaje(mensaje_codificado, arbol_huffman)
-    metodo = "Huffman"
-elif opcion == 2:
-    sf = ShannonFano()
-    mensaje_codificado = sf.encode(mensaje_original)
-    mensaje_decodificado = sf.decode(mensaje_codificado)
-    metodo = "Shannon-Fano"
-elif opcion == 3:
-    mensaje_codificado = Reversa.codificar_mensaje(mensaje_original)
-    mensaje_decodificado = Reversa.decodificar_mensaje(mensaje_codificado)
-    metodo = "Inversa"
-elif opcion == 4:
-    mensaje_codificado = Base64.codificar_mensaje(mensaje_original)
-    mensaje_decodificado = Base64.decodificar_mensaje(mensaje_codificado)
-    metodo = "Base64"
-else:
-    print("Opción no válida")
+    metodos = {1: "Huffman", 2: "Shannon-Fano", 3: "Inversa", 4: "Base64"}
+    metodo_seleccionado = metodos.get(opcion, None)
 
-hash_mensaje_original = generar_hash(mensaje_original, CLAVE_SECRETA)
-print(hash_mensaje_original)
+    if metodo_seleccionado:
+        transmisor = Transmisor(metodo_seleccionado, mensaje_original)
+        transmisor.codificar_mensaje()
+        firma = transmisor.generar_firma()
 
-clave_para_enviar = str(input()) 
-if CanalComunicacion.enviar_mensaje(mensaje_codificado, clave_para_enviar):  
-    print("\nMensaje Original:")
-    print(mensaje_original)
-    print(f"\nMensaje Codificado ({metodo}):")
-    print(mensaje_codificado)
-    print("\nMensaje Decodificado:")
-    print(mensaje_decodificado)
-else:
-    print("No se pudo enviar el mensaje. Verifica la clave del canal.")
-    
+        if transmisor.enviar_mensaje():
+            receptor = Receptor(metodo_seleccionado, transmisor.mensaje_codificado)
+            
+            
+            if receptor.verificar_firma(firma):
+                print("Firma verificada: True")
+                mensaje_decodificado = receptor.decodificar_mensaje()
+
+                print("\nMensaje Original:")
+                print(mensaje_original)
+                print(f"\nMensaje Codificado ({metodo_seleccionado}):")
+                print(transmisor.mensaje_codificado)
+                print("\nMensaje Decodificado:")
+                print(mensaje_decodificado)
+            else:
+                print("Firma verificada: False. El mensaje no es confiable.")
+
+        else:
+            print("No se pudo enviar el mensaje. Verifica la clave del canal.")
+    else:
+        print("Opción no válida")
+
+if __name__ == "__main__":
+    main()
